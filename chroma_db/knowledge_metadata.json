@@ -1,0 +1,54 @@
+{
+  "conditions": {
+    "9de136c703909a035a2037d3da20140b": {
+      "condition": "high blood pressure hypertension",
+      "allergies": [],
+      "document_count": 42,
+      "sources": [],
+      "first_added": "2025-05-22T09:13:34.134361",
+      "last_updated": "2025-05-22T09:13:34.134361"
+    },
+    "ee74b536a4c235bce59850359315a49f": {
+      "condition": "High blood pressure",
+      "allergies": [
+        "dairy"
+      ],
+      "document_count": 28,
+      "sources": [],
+      "first_added": "2025-05-22T09:44:04.089161",
+      "last_updated": "2025-05-22T09:44:04.089161"
+    },
+    "05edceef66dc07d11ce939c67aa2b1a3": {
+      "condition": "high blood pressure",
+      "allergies": [
+        "dairy",
+        "nuts"
+      ],
+      "document_count": 27,
+      "sources": [],
+      "first_added": "2025-05-22T12:10:37.094642",
+      "last_updated": "2025-05-22T12:10:37.094642"
+    },
+    "bb1454d62cfd09c6c445f23bf3c19129": {
+      "condition": "diabetes type 2",
+      "allergies": [
+        "gluten"
+      ],
+      "document_count": 20,
+      "sources": [],
+      "first_added": "2025-05-22T12:11:22.690425",
+      "last_updated": "2025-05-22T12:11:22.690425"
+    },
+    "39b297fb830a79a168bcdeea8e0f8ec7": {
+      "condition": "heart disease",
+      "allergies": [
+        "shellfish"
+      ],
+      "document_count": 18,
+      "sources": [],
+      "first_added": "2025-05-22T12:12:16.251448",
+      "last_updated": "2025-05-22T12:12:16.251448"
+    }
+  },
+  "last_updated": "2025-05-22T12:12:16.251448"
+}
