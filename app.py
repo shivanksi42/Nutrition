@@ -28,7 +28,6 @@ def get_recommendations():
         condition = data.get('condition', '').strip()
         allergies_text = data.get('allergies', '').strip()
         
-        # Parse allergies
         allergies = []
         if allergies_text:
             allergies = [allergy.strip().lower() for allergy in allergies_text.split(',')]

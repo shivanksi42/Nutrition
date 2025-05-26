@@ -46,7 +46,6 @@ class ConditionMatcher:
     """Helper class to match similar health conditions"""
     
     def __init__(self):
-        # Define condition synonyms and related terms
         self.condition_synonyms = {
             'high blood pressure': ['hypertension', 'elevated blood pressure', 'high bp'],
             'diabetes': ['diabetes mellitus', 'type 2 diabetes', 'diabetic', 'blood sugar'],
@@ -57,7 +56,6 @@ class ConditionMatcher:
             'anemia': ['iron deficiency', 'low iron', 'iron deficiency anemia']
         }
         
-        # Reverse mapping for quick lookup
         self.term_to_conditions = {}
         for main_condition, synonyms in self.condition_synonyms.items():
             self.term_to_conditions[main_condition] = main_condition
@@ -68,7 +66,6 @@ class ConditionMatcher:
         """Normalize a condition string for better matching"""
         condition = condition.lower().strip()
         
-        # Remove common prefixes/suffixes
         condition = re.sub(r'\b(chronic|acute|severe|mild|moderate)\b', '', condition)
         condition = re.sub(r'\s+', ' ', condition).strip()
         
@@ -80,7 +77,6 @@ class ConditionMatcher:
         target_normalized = self.normalize_condition(target_condition)
         similar_conditions = []
         
-        # First, check for exact synonym matches
         if target_normalized in self.term_to_conditions:
             main_condition = self.term_to_conditions[target_normalized]
             for existing in existing_conditions:
@@ -89,18 +85,15 @@ class ConditionMatcher:
                     if self.term_to_conditions[existing_normalized] == main_condition:
                         similar_conditions.append(existing)
         
-        # Then, check for partial matches and similar strings
         for existing in existing_conditions:
             existing_normalized = self.normalize_condition(existing)
             
-            # Check if either condition contains the other
             if (target_normalized in existing_normalized or 
                 existing_normalized in target_normalized):
                 if existing not in similar_conditions:
                     similar_conditions.append(existing)
                 continue
             
-            # Check string similarity
             similarity = SequenceMatcher(None, target_normalized, existing_normalized).ratio()
             if similarity >= threshold:
                 if existing not in similar_conditions:
@@ -113,20 +106,17 @@ class ConditionMatcher:
         condition_normalized = self.normalize_condition(condition)
         keywords = set()
         
-        # Add the condition itself
         keywords.add(condition_normalized)
         
-        # Add synonyms if available
         if condition_normalized in self.term_to_conditions:
             main_condition = self.term_to_conditions[condition_normalized]
             keywords.add(main_condition)
             if main_condition in self.condition_synonyms:
                 keywords.update(self.condition_synonyms[main_condition])
         
-        # Add individual words from the condition
         words = condition_normalized.split()
         for word in words:
-            if len(word) > 2:  # Skip very short words
+            if len(word) > 2: 
                 keywords.add(word)
         
         return keywords    
@@ -510,7 +500,6 @@ class VectorDatabaseManager:
         )
         self.condition_matcher = ConditionMatcher()
         
-        # Ensure persist directory exists
         os.makedirs(persist_directory, exist_ok=True)
         
         self.vectorstore = Chroma(
@@ -518,7 +507,6 @@ class VectorDatabaseManager:
             embedding_function=self.embeddings
         )
         self._initialize_retrievers()
-        # Load existing knowledge metadata
         self.knowledge_metadata = self._load_knowledge_metadata()
         
     def set_retriever_strategy(self, strategy: str = "mmr"):
@@ -538,32 +526,28 @@ class VectorDatabaseManager:
     def _initialize_retrievers(self):
         """Initialize different retriever strategies for optimal performance"""
         
-        # 1. Basic similarity retriever (fastest)
         self.similarity_retriever = self.vectorstore.as_retriever(
             search_type="similarity",
             search_kwargs={"k": 6}
         )
         
-        # 2. MMR (Maximal Marginal Relevance) retriever for diversity
         self.mmr_retriever = self.vectorstore.as_retriever(
             search_type="mmr",
             search_kwargs={
                 "k": 6,
-                "fetch_k": 12,  # Fetch more candidates for diversity
-                "lambda_mult": 0.7  # Balance between similarity and diversity
+                "fetch_k": 12,  
+                "lambda_mult": 0.7 
             }
         )
         
-        # 3. Similarity with score threshold for quality control
         self.threshold_retriever = self.vectorstore.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs={
-                "score_threshold": 0.5,  # Only return results above this similarity
+                "score_threshold": 0.5, 
                 "k": 8
             }
         )
         
-        # 4. Multi-query retriever (will implement custom logic)
         self.active_retriever = self.mmr_retriever 
     
     
@@ -588,11 +572,9 @@ class VectorDatabaseManager:
     
     def _generate_condition_key(self, condition: str, allergies: List[str]) -> str:
         """Generate a unique key for a condition-allergy combination"""
-        # Normalize the condition for consistent keying
         normalized_condition = self.condition_matcher.normalize_condition(condition)
         normalized_allergies = sorted([a.lower().strip() for a in allergies])
         
-        # Create a hash for the combination
         key_string = f"{normalized_condition}|{','.join(normalized_allergies)}"
         return hashlib.md5(key_string.encode()).hexdigest()
     
@@ -600,7 +582,6 @@ class VectorDatabaseManager:
         """Find existing conditions that are similar to the target condition"""
         existing_conditions = []
         
-        # Get all stored conditions
         for condition_key, metadata in self.knowledge_metadata["conditions"].items():
             existing_conditions.append({
                 'key': condition_key,
@@ -609,15 +590,12 @@ class VectorDatabaseManager:
                 'metadata': metadata
             })
         
-        # Extract just the condition names for matching
         condition_names = [item['condition'] for item in existing_conditions]
         
-        # Find similar conditions
         similar_condition_names = self.condition_matcher.find_similar_conditions(
             target_condition, condition_names, threshold=0.6
         )
         
-        # Filter to only include those with matching allergies
         matching_conditions = []
         target_allergies_set = set(allergy.lower().strip() for allergy in allergies)
         
@@ -625,7 +603,6 @@ class VectorDatabaseManager:
             if item['condition'] in similar_condition_names:
                 existing_allergies_set = set(allergy.lower().strip() for allergy in item['allergies'])
                 
-                # Check if allergies match (either exact match or target is subset)
                 if target_allergies_set == existing_allergies_set or target_allergies_set.issubset(existing_allergies_set):
                     matching_conditions.append(item)
         
@@ -635,15 +612,14 @@ class VectorDatabaseManager:
                                min_documents: int = 10, max_age_days: int = 7) -> bool:
         """Enhanced method to check for sufficient knowledge including similar conditions"""
         
-        # First, check for exact match
+
         condition_key = self._generate_condition_key(condition, allergies)
         
         if condition_key in self.knowledge_metadata["conditions"]:
             if self._check_condition_knowledge(condition_key, min_documents, max_age_days):
                 logger.info(f"Found exact match for condition: {condition}")
                 return True
-        
-        # Then, check for similar conditions
+  
         similar_conditions = self._find_existing_similar_conditions(condition, allergies)
         
         for similar_condition in similar_conditions:
@@ -651,8 +627,7 @@ class VectorDatabaseManager:
             if self._check_condition_knowledge(condition_key, min_documents, max_age_days):
                 logger.info(f"Found similar condition match: '{similar_condition['condition']}' for target: '{condition}'")
                 return True
-        
-        # Finally, check vector store directly with enhanced search
+      
         if self._check_vector_store_knowledge(condition, allergies, min_documents):
             logger.info(f"Found sufficient knowledge in vector store for: {condition}")
             return True
@@ -667,11 +642,11 @@ class VectorDatabaseManager:
         
         metadata = self.knowledge_metadata["conditions"][condition_key]
         
-        # Check if we have enough documents
+      
         if metadata.get("document_count", 0) < min_documents:
             return False
         
-        # Check if the knowledge is recent enough
+       
         last_updated = metadata.get("last_updated")
         if last_updated:
             try:
@@ -688,28 +663,28 @@ class VectorDatabaseManager:
     def _check_vector_store_knowledge(self, condition: str, allergies: List[str], min_documents: int) -> bool:
         """Check vector store directly for relevant documents"""
         try:
-            # Get keywords for the condition
+           
             keywords = self.condition_matcher.get_condition_keywords(condition)
             
-            # Search with multiple keyword combinations
+           
             search_queries = [
                 condition,
                 f"{condition} diet nutrition",
                 f"{condition} dietary management",
             ]
             
-            # Add synonym-based searches
+           
             for keyword in keywords:
                 if keyword != condition:
                     search_queries.append(f"{keyword} nutrition")
             
             all_results = set()
             
-            for query in search_queries[:3]:  # Limit to prevent too many searches
+            for query in search_queries[:3]: 
                 try:
                     results = self.vectorstore.similarity_search(query, k=5)
                     for result in results:
-                        # Use a combination of content and metadata for uniqueness
+                        
                         result_id = hashlib.md5(
                             f"{result.page_content[:100]}{result.metadata.get('source', '')}{result.metadata.get('title', '')}".encode()
                         ).hexdigest()
@@ -784,7 +759,7 @@ class VectorDatabaseManager:
             self.vectorstore.add_documents(filtered_docs)
             logger.info(f"Added {len(filtered_docs)} document chunks to vector database")
             
-            # Update metadata if condition and allergies are provided
+            
             if condition is not None:
                 if allergies is None:
                     allergies = []
@@ -812,7 +787,7 @@ class VectorDatabaseManager:
         metadata["document_count"] += document_count
         metadata["last_updated"] = datetime.now().isoformat()
         
-        # Ensure sources is a list
+       
         if not isinstance(metadata.get("sources"), list):
             metadata["sources"] = []
         
@@ -822,7 +797,7 @@ class VectorDatabaseManager:
     def search_similar(self, query: str, k: int = 6, strategy: str = None) -> List[Document]:
         """Enhanced search using retrievers - much faster than manual similarity search"""
         try:
-            # Use specified strategy or default
+           
             retriever = self.active_retriever
             if strategy:
                 temp_strategies = {
@@ -850,31 +825,26 @@ class VectorDatabaseManager:
     def multi_query_search(self, base_query: str, k: int = 8) -> List[Document]:
         """Enhanced multi-query search using condition matching and retrievers"""
         try:
-            # Generate multiple query variations
             keywords = self.condition_matcher.get_condition_keywords(base_query)
             
-            # Create focused query variations
             queries = [
                 base_query,
                 f"{base_query} diet nutrition",
                 f"{base_query} dietary management treatment"
             ]
             
-            # Add keyword-based queries (limit to avoid too many calls)
             main_keywords = list(keywords)[:2]
             for keyword in main_keywords:
                 if keyword.lower() != base_query.lower():
                     queries.append(f"{keyword} nutrition recommendations")
             
-            # Use retriever for each query (still faster than manual similarity search)
             all_results = []
             seen_content_hashes = set()
             
-            for query in queries[:4]:  # Limit to 4 queries max
+            for query in queries[:4]:  
                 try:
                     results = self.active_retriever.get_relevant_documents(query)
                     
-                    # Deduplicate based on content hash
                     for doc in results:
                         content_hash = hashlib.md5(doc.page_content[:200].encode()).hexdigest()
                         if content_hash not in seen_content_hashes:
@@ -885,7 +855,6 @@ class VectorDatabaseManager:
                     logger.warning(f"Error in multi-query search for '{query}': {e}")
                     continue
             
-            # Return top k results
             return all_results[:k]
             
         except Exception as e:
@@ -896,7 +865,6 @@ class VectorDatabaseManager:
         """Search with metadata filters using retriever"""
         try:
             if metadata_filters:
-                # Create a custom retriever with filters
                 filtered_retriever = self.vectorstore.as_retriever(
                     search_type="similarity",
                     search_kwargs={
@@ -1018,7 +986,6 @@ class DietaryRecommendationSystem:
     def _setup_chains(self):
         """Setup retrieval chains for faster processing"""
         
-        # Create a specialized prompt for dietary recommendations
         recommendation_prompt = PromptTemplate(
             template="""
             You are a nutrition expert and registered dietitian providing evidence-based dietary recommendations.
@@ -1032,31 +999,31 @@ class DietaryRecommendationSystem:
             
             Please provide comprehensive, personalized dietary recommendations that include:
             
-            1. **Foods to Include** (with specific examples and portions):
+            1. Foods to Include (with specific examples and portions):
                - List specific foods that are beneficial for this condition
                - Include serving sizes and frequency recommendations
                - Explain WHY each food is beneficial (nutritional mechanisms)
             
-            2. **Foods to Avoid** (considering both condition and allergies):
+            2. Foods to Avoid (considering both condition and allergies):
                - Foods that may worsen the condition
                - All allergenic foods mentioned by the patient
                - Explain the reasoning behind each restriction
             
-            3. **Sample Daily Meal Plan**:
+            3. Sample Daily Meal Plan:
                - Breakfast, lunch, dinner, and snack suggestions
                - Ensure all meals are allergy-safe
                - Include approximate portions and nutritional highlights
             
-            4. **Key Nutritional Targets**:
+            4. Key Nutritional Targets:
                - Specific nutrients to focus on (with daily targets if applicable)
                - Explain how these nutrients help manage the condition
             
-            5. **Practical Implementation Tips**:
+            5. Practical Implementation Tips:
                - Meal prep suggestions
                - Grocery shopping tips
                - Dining out strategies
             
-            6. **Important Considerations**:
+            6. Important Considerations:
                - Potential interactions with medications (general advice)
                - When to consult healthcare providers
                - Monitoring recommendations
@@ -1073,7 +1040,6 @@ class DietaryRecommendationSystem:
             input_variables=["condition", "allergies", "context"]
         )
         
-        # # Setup retrieval QA chain with MMR retriever for best results
         retriever = self.vector_db_manager.get_retriever(
             search_type="mmr",
             k=8,
@@ -1081,15 +1047,16 @@ class DietaryRecommendationSystem:
             lambda_mult=0.7
         )
         
-        # self._qa_chain = RetrievalQA.from_chain_type(
-        #     llm=self.llm,
-        #     chain_type="stuff",
-        #     retriever=retriever,
-        #     return_source_documents=True,
-        #     chain_type_kwargs={
-        #         "prompt": recommendation_prompt
-        #     }
-        # )
+        self._qa_chain = RetrievalQA.from_chain_type(
+            llm=self.llm,
+            chain_type="stuff",
+            retriever=retriever,
+            return_source_documents=True,
+            chain_type_kwargs={
+                "prompt": recommendation_prompt
+            },
+            input_key="query"
+        )
         
         from langchain.chains import LLMChain
         from langchain.schema.runnable import RunnablePassthrough
@@ -1111,10 +1078,8 @@ class DietaryRecommendationSystem:
     async def initialize(self):
         """Initialize the system with base knowledge - ONLY when needed"""
         if not self._initialization_done:
-            # Setup chains first
             self._setup_chains()
             
-            # Only initialize base knowledge if vector store is completely empty
             stats = self.vector_db_manager.get_knowledge_stats()
             if stats['total_conditions'] == 0:
                 logger.info("Vector store is empty, initializing with base knowledge...")
@@ -1130,7 +1095,6 @@ class DietaryRecommendationSystem:
         await self.initialize()
         
         try:
-            # Check if we have sufficient knowledge
             has_knowledge = self.vector_db_manager.has_sufficient_knowledge(
                 health_condition.condition, 
                 health_condition.allergies,
@@ -1144,28 +1108,22 @@ class DietaryRecommendationSystem:
                     health_condition.condition, 
                     health_condition.allergies
                 )
-                # Recreate chains with updated vector store
                 self._setup_chains()
             
-            # Use retrieval chain for faster processing
             query = f"""
             Dietary recommendations for {health_condition.condition}
             Patient allergies: {', '.join(health_condition.allergies)}
             Nutrition guidelines and food recommendations
             """
             
-            # Method 1: Use RetrievalQA chain (simpler but less control)
             result = self._qa_chain.invoke({
-                "query": query,
-                "condition": health_condition.condition,
-                "allergies": ", ".join(health_condition.allergies) if health_condition.allergies else "None"
+                "query": query
             })
             
             return result["result"]
             
         except Exception as e:
             logger.error(f"Error in fast recommendations: {e}")
-            # Fallback to manual method
             return await self.get_dietary_recommendations(health_condition)
         
     async def get_dietary_recommendations_with_sources(self, health_condition: HealthCondition) -> Dict:
@@ -1174,7 +1132,6 @@ class DietaryRecommendationSystem:
         await self.initialize()
         
         try:
-            # Ensure we have knowledge
             has_knowledge = self.vector_db_manager.has_sufficient_knowledge(
                 health_condition.condition, 
                 health_condition.allergies,
@@ -1195,14 +1152,10 @@ class DietaryRecommendationSystem:
             Nutrition guidelines and food recommendations
             """
             
-            # Use QA chain that returns sources
             result = self._qa_chain.invoke({
-                "query": query,
-                "condition": health_condition.condition,
-                "allergies": ", ".join(health_condition.allergies) if health_condition.allergies else "None"
+                "query": query
             })
             
-            # Format source information
             sources = []
             for doc in result.get("source_documents", []):
                 source_info = {
@@ -1237,18 +1190,17 @@ class DietaryRecommendationSystem:
         await self.initialize()
         
         try:
-            # Use targeted search with filters
+            
             query = f"{condition} {meal_type} food recommendations nutrition"
             
-            # Get retriever with specific settings for quick results
             retriever = self.vector_db_manager.get_retriever(
-                search_type="similarity",  # Fastest option
-                k=4  # Fewer results for speed
+                search_type="similarity",  
+                k=4  
             )
             
             relevant_docs = retriever.get_relevant_documents(query)
             
-            # Quick processing with simpler prompt
+           
             quick_prompt = f"""
             Based on this nutritional information: {' '.join([doc.page_content[:300] for doc in relevant_docs])}
             
@@ -1272,38 +1224,6 @@ class DietaryRecommendationSystem:
         except Exception as e:
             logger.error(f"Error getting quick suggestions: {e}")
             return {"suggestions": f"Error: {str(e)}", "processing_time": "error"}
-    
-    def benchmark_retrieval_performance(self, test_conditions: List[str]) -> Dict:
-        """Benchmark different retrieval approaches"""
-        
-        benchmark_results = {}
-        
-        # Test different retriever strategies
-        strategies = ["similarity", "mmr", "threshold"]
-        
-        for strategy in strategies:
-            start_time = time.time()
-            
-            self.vector_db_manager.set_retriever_strategy(strategy)
-            
-            for condition in test_conditions:
-                query = f"{condition} dietary recommendations nutrition"
-                results = self.vector_db_manager.search_similar(query, k=6)
-            
-            end_time = time.time()
-            
-            benchmark_results[strategy] = {
-                "total_time": end_time - start_time,
-                "avg_time_per_query": (end_time - start_time) / len(test_conditions),
-                "queries_tested": len(test_conditions)
-            }
-        
-        # Test retrieval chain vs manual approach
-        start_time = time.time()
-        
-        # Manual approach timing would go here
-        
-        return benchmark_results
     
     async def _initialize_base_knowledge(self):
         """Pre-populate the database with common conditions and dietary guidelines"""
@@ -1350,7 +1270,6 @@ class DietaryRecommendationSystem:
             all_documents.extend(harvard_docs)
             
             if all_documents:
-                # Pass condition and allergies to track metadata
                 self.vector_db_manager.add_documents(all_documents, condition, allergies)
                 logger.info(f"Stored {len(all_documents)} documents for {condition}")
                 logger.info(f"  - PubMed: {len(pubmed_docs)} articles")
@@ -1368,12 +1287,11 @@ class DietaryRecommendationSystem:
         await self.initialize()
         
         try:
-            # Check if we have sufficient knowledge
             has_knowledge = self.vector_db_manager.has_sufficient_knowledge(
                 health_condition.condition, 
                 health_condition.allergies,
-                min_documents=5,  # Require at least 5 documents
-                max_age_days=7    # Refresh if older than 7 days
+                min_documents=5, 
+                max_age_days=7    
             )
             
             if not has_knowledge:
@@ -1394,7 +1312,6 @@ class DietaryRecommendationSystem:
             
             relevant_docs = self.vector_db_manager.search_similar(query, k=8)
             
-            # Your existing prompt template code here...
             prompt_template = """
             You are a nutrition expert and registered dietitian providing evidence-based dietary recommendations.
             
@@ -1504,11 +1421,9 @@ class DietaryRecommendationAPI:
             
             
             if fast_mode:
-                # Use fast retriever-based method
                 recommendations = await self.system.get_dietary_recommendations_fast(health_condition)
                 method_used = "fast_retriever"
             else:
-                # Use comprehensive method (backward compatible)
                 recommendations = await self.system.get_dietary_recommendations(health_condition)
                 method_used = "comprehensive"
             
@@ -1531,123 +1446,4 @@ class DietaryRecommendationAPI:
             }
     
    
-                     
-# async def main():
-#     """Enhanced main function with multiple usage examples"""
-    
-#     print("🍎 Dietary Recommendation System - Enhanced with Retrievers")
-#     print("=" * 60)
-    
-#     # Initialize the API
-#     api = DietaryRecommendationAPI()
-    
-#     # Example 1: Fast recommendations (default)
-#     print("\n📊 Example 1: Fast Recommendations")
-#     print("-" * 40)
-    
-#     result1 = await api.get_recommendations(
-#         condition="high blood pressure",
-#         allergies=["dairy", "nuts"],
-#         fast_mode=True
-#     )
-    
-#     print(f"Status: {result1['status']}")
-#     print(f"Processing Time: {result1.get('processing_time_seconds', 'N/A')} seconds")
-#     print(f"Method Used: {result1.get('method', 'N/A')}")
-#     print("\nRecommendations Preview:")
-#     print(result1["recommendations"][:500] + "...\n")
-    
-#     # Example 2: Comprehensive recommendations
-#     print("\n📚 Example 2: Comprehensive Recommendations")
-#     print("-" * 40)
-    
-#     result2 = await api.get_recommendations(
-#         condition="diabetes type 2",
-#         allergies=["gluten"],
-#         fast_mode=False
-#     )
-    
-#     print(f"Status: {result2['status']}")
-#     print(f"Processing Time: {result2.get('processing_time_seconds', 'N/A')} seconds")
-#     print(f"Method Used: {result2.get('method', 'N/A')}")
-#     print("\nRecommendations Preview:")
-#     print(result2["recommendations"][:500] + "...\n")
-    
-#     # Example 3: Recommendations with sources
-#     print("\n🔗 Example 3: Recommendations with Sources")
-#     print("-" * 40)
-    
-#     result3 = await api.get_recommendations_with_sources(
-#         condition="heart disease",
-#         allergies=["shellfish"]
-#     )
-    
-#     print(f"Status: {result3['status']}")
-#     print(f"Processing Time: {result3.get('processing_time_seconds', 'N/A')} seconds")
-#     print(f"Number of Sources: {len(result3.get('sources', []))}")
-    
-#     if result3.get('sources'):
-#         print("\nTop Sources:")
-#         for i, source in enumerate(result3['sources'][:3], 1):
-#             print(f"  {i}. {source.get('source', 'Unknown')} - {source.get('title', 'No title')}")
-    
-#     print("\nRecommendations Preview:")
-#     print(result3["recommendations"][:400] + "...\n")
-    
-#     # Example 4: Quick food suggestions
-#     print("\n⚡ Example 4: Quick Food Suggestions")
-#     print("-" * 40)
-    
-#     result4 = await api.get_quick_suggestions(
-#         condition="high cholesterol",
-#         allergies=["eggs"],
-#         meal_type="breakfast"
-#     )
-    
-#     print(f"Status: {result4['status']}")
-#     print(f"Processing Time: {result4.get('processing_time_seconds', 'N/A')} seconds")
-#     print(f"Meal Type: {result4.get('meal_type', 'N/A')}")
-#     print("\nSuggestions:")
-#     print(result4.get("suggestions", "No suggestions available"))
-#     print()
-    
-#     # Example 5: System statistics
-#     print("\n📈 Example 5: System Statistics")
-#     print("-" * 40)
-    
-#     stats = api.get_system_stats()
-    
-#     if stats['status'] == 'success':
-#         knowledge_stats = stats['knowledge_stats']
-#         print(f"Total Conditions in Knowledge Base: {knowledge_stats['total_conditions']}")
-#         print(f"System Initialized: {stats['system_initialized']}")
-        
-#         if knowledge_stats['conditions']:
-#             print("\nKnowledge Base Contents:")
-#             for condition in knowledge_stats['conditions'][:5]:  # Show first 5
-#                 age = condition.get('age_days', 'Unknown')
-#                 print(f"  - {condition['condition']}: {condition['document_count']} docs, {age} days old")
-    
-#     # Example 6: Performance benchmark
-#     print("\n🏃 Example 6: Performance Benchmark")
-#     print("-" * 40)
-    
-#     benchmark_result = await api.benchmark_performance([
-#         "obesity",
-#         "osteoporosis"
-#     ])
-    
-#     if benchmark_result['status'] == 'success':
-#         results = benchmark_result['benchmark_results']
-#         print("Retriever Performance Comparison:")
-        
-#         for strategy, metrics in results.items():
-#             avg_time = metrics.get('avg_time_per_query', 0)
-#             total_time = metrics.get('total_time', 0)
-#             print(f"  - {strategy.capitalize()}: {avg_time:.3f}s avg, {total_time:.3f}s total")
-    
-#     print("\n✅ All examples completed!")
-
-
-# if __name__ == "__main__":
-#     asyncio.run(main())
+ 
