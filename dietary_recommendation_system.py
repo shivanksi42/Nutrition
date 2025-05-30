@@ -974,7 +974,7 @@ class DietaryRecommendationSystem:
         self.data_source_manager = DataSourceManager()
         self.vector_db_manager = VectorDatabaseManager()
         self.llm = ChatOpenAI(
-            model="gpt-4-turbo",
+            model="GPT-3.5-turbo",
             temperature=0.2,
             api_key=os.getenv('OPENAI_API_KEY')
         )
