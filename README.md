@@ -1,6 +1,7 @@
 # 🌿 NutriCare AI – Personalized Dietary Recommendations with RAG
 
-<img src="media/nutrition.png" width="400" alt="NutriCare Logo" />
+![NutriCare Logo](media/nutrition.png)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/badge/Build-Stable-success)]()
 [![Made with Python](https://img.shields.io/badge/Made%20with-Python-blue.svg)]()
@@ -14,12 +15,12 @@
 
 ## 🚀 Features
 
-- ✅ Input diagnosis + allergy via natural language
-- 🧠 Retrieval-Augmented Generation for contextual dietary planning
-- 🔍 Real-time querying of health-specific article databases
-- 🥗 Personalized recommendations using AI-driven text understanding
-- 🌐 Modern UI with React frontend
-- 📊 Scalable with **ChromaDB** vector database
+- Input diagnosis + allergy via natural language
+- Retrieval-Augmented Generation for contextual dietary planning
+- Real-time querying of health-specific article databases
+- Personalized recommendations using AI-driven text understanding
+- Modern UI with React frontend
+- Scalable with ChromaDB vector database
 
 ---
 
@@ -27,13 +28,13 @@
 
 | Frontend | Backend | AI Model | Database | Web Scraping |
 |----------|---------|----------|----------|--------------|
-| React.js | Flask / FastAPI | LangChain + OpenAI (RAG) | **ChromaDB** | BeautifulSoup |
+| html/css/js | Flask | LangChain + OpenAI (RAG) | ChromaDB | BeautifulSoup |
 
 ---
 
 ## 📷 Demo
 
-![App Demo](https://your-image-hosting-link/nutricare-demo.gif)
+![App Demo](media/demo_video.gif)
 
 ---
 
