@@ -1,6 +1,6 @@
 # 🌿 NutriCare AI – Personalized Dietary Recommendations with RAG
 
-![NutriCare Logo](media/nutrition.png)
+<img src="media/nutrition.png" width="400" alt="NutriCare Logo" />
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/badge/Build-Stable-success)]()
 [![Made with Python](https://img.shields.io/badge/Made%20with-Python-blue.svg)]()
